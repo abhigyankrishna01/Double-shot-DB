@@ -1,0 +1,108 @@
+[
+  {
+    "id": "E001",
+    "question": "What are the top 5 products by total revenue?",
+    "expected_tables": ["products", "order_items"],
+    "expected_keywords": ["SUM", "GROUP BY", "ORDER BY", "LIMIT"],
+    "min_rows": 1,
+    "tags": ["aggregation", "join", "ranking"]
+  },
+  {
+    "id": "E002",
+    "question": "How many orders were placed each month in 2023?",
+    "expected_tables": ["orders"],
+    "expected_keywords": ["COUNT", "GROUP BY"],
+    "min_rows": 1,
+    "tags": ["time-series", "aggregation"]
+  },
+  {
+    "id": "E003",
+    "question": "Which customers have spent the most money overall?",
+    "expected_tables": ["customers", "orders", "order_items"],
+    "expected_keywords": ["SUM", "JOIN", "GROUP BY", "ORDER BY"],
+    "min_rows": 1,
+    "tags": ["multi-join", "aggregation", "ranking"]
+  },
+  {
+    "id": "E004",
+    "question": "What is the average order value by country?",
+    "expected_tables": ["customers", "orders", "order_items"],
+    "expected_keywords": ["AVG", "GROUP BY"],
+    "min_rows": 1,
+    "tags": ["multi-join", "aggregation", "geographic"]
+  },
+  {
+    "id": "E005",
+    "question": "Which product categories generate the most revenue?",
+    "expected_tables": ["products", "order_items"],
+    "expected_keywords": ["SUM", "category", "GROUP BY"],
+    "min_rows": 1,
+    "tags": ["aggregation", "join"]
+  },
+  {
+    "id": "E006",
+    "question": "What percentage of orders were cancelled?",
+    "expected_tables": ["orders"],
+    "expected_keywords": ["COUNT", "status"],
+    "min_rows": 1,
+    "tags": ["percentage", "filter"]
+  },
+  {
+    "id": "E007",
+    "question": "List all customers who have never placed an order.",
+    "expected_tables": ["customers", "orders"],
+    "expected_keywords": ["LEFT JOIN", "NULL"],
+    "min_rows": 0,
+    "tags": ["outer-join", "null-check"]
+  },
+  {
+    "id": "E008",
+    "question": "What are the top 3 best-selling products by quantity sold?",
+    "expected_tables": ["order_items", "products"],
+    "expected_keywords": ["SUM", "quantity", "GROUP BY", "ORDER BY"],
+    "min_rows": 1,
+    "tags": ["aggregation", "ranking"]
+  },
+  {
+    "id": "E009",
+    "question": "How many customers signed up each year?",
+    "expected_tables": ["customers"],
+    "expected_keywords": ["COUNT", "signup_date", "GROUP BY"],
+    "min_rows": 1,
+    "tags": ["time-series", "aggregation"]
+  },
+  {
+    "id": "E010",
+    "question": "Which orders contain more than 2 items?",
+    "expected_tables": ["order_items"],
+    "expected_keywords": ["COUNT", "GROUP BY", "HAVING"],
+    "min_rows": 0,
+    "tags": ["having", "aggregation"]
+  },
+  {
+    "id": "E011",
+    "question": "What is the revenue trend by month for completed orders?",
+    "expected_tables": ["orders", "order_items"],
+    "expected_keywords": ["SUM", "GROUP BY", "completed"],
+    "min_rows": 1,
+    "tags": ["time-series", "filter", "aggregation"]
+  },
+  {
+    "id": "E012",
+    "question": "Show me products that have never been ordered.",
+    "expected_tables": ["products", "order_items"],
+    "expected_keywords": ["LEFT JOIN", "NULL"],
+    "min_rows": 0,
+    "tags": ["outer-join", "null-check"]
+  },
+  {
+    "id": "FAIL001",
+    "question": "What is the revenue by region?",
+    "expected_tables": [],
+    "expected_keywords": [],
+    "min_rows": 0,
+    "tags": ["expected-failure"],
+    "expect_failure": true,
+    "failure_reason": "Schema has no 'region' column — only 'country' in customers"
+  }
+]
