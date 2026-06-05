@@ -268,6 +268,37 @@ BACKEND_URL=http://localhost:8000 streamlit run frontend/app.py
 
 ---
 
+## Deploy to Render
+
+This repo ships with [render.yaml](render.yaml) — a Render Blueprint that provisions:
+- A managed **PostgreSQL** database (`agent-db`)
+- The **FastAPI backend** as a Docker web service (`agent-backend`)
+- The **Streamlit frontend** as a Docker web service (`agent-frontend`)
+
+### Steps
+
+1. **Push to GitHub** (see commands above).
+2. In Render → **New + → Blueprint** → select this repo. It will read `render.yaml` and provision all three services.
+3. On `agent-backend`, set these secrets in **Environment**:
+   - `AZURE_OPENAI_ENDPOINT`
+   - `AZURE_OPENAI_API_KEY`
+4. **Seed the database** — open the `agent-db` PSQL shell in Render and run:
+   ```sql
+   \i sql/sample_db.sql
+   ```
+   (or paste the contents of [sql/sample_db.sql](sql/sample_db.sql)). This creates the schema, seeds rows, and provisions the `readonly_user` role.
+5. On `agent-frontend`, set `BACKEND_URL` to the backend's public URL (e.g. `https://agent-backend.onrender.com`).
+6. *(Recommended)* On `agent-backend`, set `ALLOWED_ORIGINS` to the frontend's URL (e.g. `https://agent-frontend.onrender.com`) — replaces the wildcard CORS default.
+7. Visit the frontend URL → ask a question.
+
+### Notes for free-tier Render
+
+- Free web services sleep after 15 min idle — first request after sleep can take ~30s.
+- Free Postgres is wiped after 90 days; re-run `sample_db.sql` to restore the schema.
+- For multi-worker deployments, replace the in-memory `ConversationStore` and `QueryCache` with the Redis-backed variants (roadmap).
+
+---
+
 ## License
 
 MIT

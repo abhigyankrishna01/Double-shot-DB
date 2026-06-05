@@ -1,4 +1,5 @@
 import logging
+import os
 import uuid
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
@@ -43,9 +44,12 @@ app = FastAPI(
     redoc_url=None,
 )
 
+_cors_env = os.getenv("ALLOWED_ORIGINS", "*").strip()
+_allowed_origins = [o.strip() for o in _cors_env.split(",") if o.strip()] or ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # restrict before public deployment
+    allow_origins=_allowed_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type"],

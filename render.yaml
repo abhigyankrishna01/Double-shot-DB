@@ -1,0 +1,92 @@
+# Render Blueprint — Autonomous SQL Data Analyst Agent
+# Deploy: push to GitHub, then in Render → "New +" → "Blueprint" → select this repo.
+#
+# After provisioning:
+#   1. In the `agent-db` service shell, run:  psql $DATABASE_URL -f sql/sample_db.sql
+#      (or upload sample_db.sql and run it once via Render's psql shell)
+#   2. Set AZURE_OPENAI_* secrets on the `agent-backend` service env.
+
+databases:
+  - name: agent-db
+    plan: free
+    databaseName: analyst_db
+    user: postgres
+
+services:
+  # ── Backend (FastAPI + LangGraph) ──────────────────────────────────────────
+  - type: web
+    name: agent-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      # Azure OpenAI — set these manually in the Render dashboard
+      - key: AZURE_OPENAI_ENDPOINT
+        sync: false
+      - key: AZURE_OPENAI_API_KEY
+        sync: false
+      - key: AZURE_OPENAI_DEPLOYMENT
+        value: gpt-4o-mini
+      - key: AZURE_OPENAI_API_VERSION
+        value: "2024-02-01"
+
+      # PostgreSQL admin DSN (pulled from managed DB)
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: agent-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: agent-db
+          property: port
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: agent-db
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: agent-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: agent-db
+          property: password
+
+      # Read-only DB user — created by sample_db.sql.
+      # NOTE: on Render's managed Postgres, role creation requires running the
+      # init SQL once via the shell (see top of file). The readonly_user
+      # password below must match what sample_db.sql sets.
+      - key: POSTGRES_READONLY_USER
+        value: readonly_user
+      - key: POSTGRES_READONLY_PASSWORD
+        value: readonly_pass
+
+      # App
+      - key: MAX_RETRIES
+        value: "3"
+      - key: MAX_STEPS
+        value: "4"
+      - key: MAX_QUERY_ROWS
+        value: "500"
+      - key: MAX_QUESTION_LENGTH
+        value: "500"
+      - key: RATE_LIMIT
+        value: 15/minute
+
+      # CORS — restrict to the frontend's URL once it's known
+      - key: ALLOWED_ORIGINS
+        value: "*"
+
+  # ── Frontend (Streamlit) ───────────────────────────────────────────────────
+  - type: web
+    name: agent-frontend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    envVars:
+      # Paste backend URL after first deploy, e.g. https://agent-backend.onrender.com
+      - key: BACKEND_URL
+        sync: false
