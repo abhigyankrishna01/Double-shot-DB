@@ -10,7 +10,7 @@ databases:
   - name: agent-db
     plan: free
     databaseName: analyst_db
-    user: postgres
+    
 
 services:
   # ── Backend (FastAPI + LangGraph) ──────────────────────────────────────────
