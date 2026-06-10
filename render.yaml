@@ -10,11 +10,6 @@ databases:
   - name: agent-db
     plan: free
     databaseName: analyst_db
-<<<<<<< HEAD
-    
-=======
->>>>>>> bd020f5 (env and backend updates)
-
 services:
   # ── Backend (FastAPI + LangGraph) ──────────────────────────────────────────
   - type: web
