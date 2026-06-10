@@ -1,15 +1,13 @@
 # Render Blueprint — Autonomous SQL Data Analyst Agent
 # Deploy: push to GitHub, then in Render → "New +" → "Blueprint" → select this repo.
 #
+# DB is Neon (external) — Render no longer provisions Postgres for this app.
 # After provisioning:
-#   1. In the `agent-db` service shell, run:  psql $DATABASE_URL -f sql/sample_db.sql
-#      (or upload sample_db.sql and run it once via Render's psql shell)
-#   2. Set GEMINI_API_KEY on the `agent-backend` service env.
+#   1. Set GEMINI_API_KEY on the `agent-backend` service env.
+#   2. Set READONLY_DATABASE_URL on `agent-backend` to your Neon readonly_user URL.
+#      e.g. postgresql://readonly_user:readonly_pass@ep-xxx.aws.neon.tech/analyst_db?sslmode=require
+#   3. After first deploy, copy backend URL and set BACKEND_URL on `agent-frontend`.
 
-databases:
-  - name: agent-db
-    plan: free
-    databaseName: analyst_db
 services:
   # ── Backend (FastAPI + LangGraph) ──────────────────────────────────────────
   - type: web
@@ -28,36 +26,12 @@ services:
       - key: GEMINI_BASE_URL
         value: https://generativelanguage.googleapis.com/v1beta/openai/
 
-      # PostgreSQL admin DSN (pulled from managed DB)
-      - key: POSTGRES_HOST
-        fromDatabase:
-          name: agent-db
-          property: host
-      - key: POSTGRES_PORT
-        fromDatabase:
-          name: agent-db
-          property: port
-      - key: POSTGRES_DB
-        fromDatabase:
-          name: agent-db
-          property: database
-      - key: POSTGRES_USER
-        fromDatabase:
-          name: agent-db
-          property: user
-      - key: POSTGRES_PASSWORD
-        fromDatabase:
-          name: agent-db
-          property: password
-
-      # Read-only DB user — created by sample_db.sql.
-      # NOTE: on Render's managed Postgres, role creation requires running the
-      # init SQL once via the shell (see top of file). The readonly_user
-      # password below must match what sample_db.sql sets.
-      - key: POSTGRES_READONLY_USER
-        value: readonly_user
-      - key: POSTGRES_READONLY_PASSWORD
-        value: readonly_pass
+      # Neon Postgres — paste readonly_user connection string in the dashboard
+      - key: READONLY_DATABASE_URL
+        sync: false
+      # Optional admin URL — only set if you need admin-role connections from the app
+      - key: ADMIN_DATABASE_URL
+        sync: false
 
       # App
       - key: MAX_RETRIES

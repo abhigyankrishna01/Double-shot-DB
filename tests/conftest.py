@@ -10,8 +10,10 @@ import os
 os.environ.setdefault("GEMINI_API_KEY", "test-gemini-key-00000000000000000000")
 os.environ.setdefault("GEMINI_MODEL", "gemini-2.5-flash")
 os.environ.setdefault("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
-os.environ.setdefault("POSTGRES_READONLY_USER", "readonly_user")
-os.environ.setdefault("POSTGRES_READONLY_PASSWORD", "readonly_pass")
+os.environ.setdefault(
+    "READONLY_DATABASE_URL",
+    "postgresql://readonly_user:readonly_pass@localhost:5432/analyst_db",
+)
 os.environ.setdefault("MAX_RETRIES", "3")
 os.environ.setdefault("MAX_STEPS", "4")
 os.environ.setdefault("MAX_QUERY_ROWS", "500")

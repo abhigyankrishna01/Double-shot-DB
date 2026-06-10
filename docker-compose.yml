@@ -27,7 +27,9 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      POSTGRES_HOST: db
+      # Override .env DB URLs to point at the bundled db container for local dev.
+      READONLY_DATABASE_URL: postgresql://${POSTGRES_READONLY_USER:-readonly_user}:${POSTGRES_READONLY_PASSWORD:-readonly_pass}@db:5432/${POSTGRES_DB:-analyst_db}
+      ADMIN_DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-analyst_db}
     ports:
       - "8000:8000"
     depends_on:

@@ -124,7 +124,7 @@ GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 
 Get a free key at https://aistudio.google.com/apikey.
 
-Leave the PostgreSQL values at their defaults unless you're pointing at an external DB.
+For local Docker dev, leave `READONLY_DATABASE_URL` commented out — `docker-compose.yml` constructs it automatically from the bundled `db` service. For cloud deploys (Neon, Render, Supabase), set `READONLY_DATABASE_URL` to your provider's connection string — `?sslmode=require` is fine, the app handles it.
 
 ### 2. Start the stack
 
@@ -272,29 +272,34 @@ BACKEND_URL=http://localhost:8000 streamlit run frontend/app.py
 ## Deploy to Render
 
 This repo ships with [render.yaml](render.yaml) — a Render Blueprint that provisions:
-- A managed **PostgreSQL** database (`agent-db`)
 - The **FastAPI backend** as a Docker web service (`agent-backend`)
 - The **Streamlit frontend** as a Docker web service (`agent-frontend`)
 
+The database is **external (Neon)** — Render's free tier does not allow custom role creation via shell, so the read-only role required by this app cannot be provisioned there. Neon's free tier supports it out of the box.
+
 ### Steps
 
-1. **Push to GitHub** (see commands above).
-2. In Render → **New + → Blueprint** → select this repo. It will read `render.yaml` and provision all three services.
-3. On `agent-backend`, set this secret in **Environment**:
-   - `GEMINI_API_KEY`
-4. **Seed the database** — open the `agent-db` PSQL shell in Render and run:
-   ```sql
-   \i sql/sample_db.sql
-   ```
-   (or paste the contents of [sql/sample_db.sql](sql/sample_db.sql)). This creates the schema, seeds rows, and provisions the `readonly_user` role.
-5. On `agent-frontend`, set `BACKEND_URL` to the backend's public URL (e.g. `https://agent-backend.onrender.com`).
-6. *(Recommended)* On `agent-backend`, set `ALLOWED_ORIGINS` to the frontend's URL (e.g. `https://agent-frontend.onrender.com`) — replaces the wildcard CORS default.
-7. Visit the frontend URL → ask a question.
+**Prerequisite — Neon database (free):**
+
+1. Create a project at https://neon.tech.
+2. Open the Neon **SQL Editor** and run the contents of [sql/sample_db.sql](sql/sample_db.sql) — this creates the schema, seeds data, and provisions the `readonly_user` role.
+3. From Neon dashboard → **Connection Details** → select the `readonly_user` role → copy the connection string (`postgresql://readonly_user:...@ep-xxx.neon.tech/analyst_db?sslmode=require`).
+
+**Deploy:**
+
+1. Push to GitHub.
+2. Render → **New + → Blueprint** → select this repo. It provisions the two web services from `render.yaml`.
+3. On `agent-backend`, set these env vars in **Environment**:
+   - `GEMINI_API_KEY` — your Gemini key
+   - `READONLY_DATABASE_URL` — the Neon URL you copied above
+4. On `agent-frontend`, set `BACKEND_URL` to the backend's public URL (e.g. `https://agent-backend.onrender.com`).
+5. *(Recommended)* On `agent-backend`, set `ALLOWED_ORIGINS` to the frontend's URL — replaces the wildcard CORS default.
+6. Visit the frontend URL → ask a question.
 
 ### Notes for free-tier Render
 
 - Free web services sleep after 15 min idle — first request after sleep can take ~30s.
-- Free Postgres is wiped after 90 days; re-run `sample_db.sql` to restore the schema.
+- Neon's free tier puts an inactive DB into "scale-to-zero" — first request after idle wakes it in <1s.
 - For multi-worker deployments, replace the in-memory `ConversationStore` and `QueryCache` with the Redis-backed variants (roadmap).
 
 ---
