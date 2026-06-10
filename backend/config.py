@@ -3,11 +3,10 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    # Azure OpenAI
-    azure_openai_endpoint: str
-    azure_openai_api_key: str
-    azure_openai_deployment: str = "gpt-4o-mini"
-    azure_openai_api_version: str = "2024-02-01"
+    # Gemini (Google Generative Language API — OpenAI-compatible endpoint)
+    gemini_api_key: str
+    gemini_model: str = "gemini-2.5-flash"
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
     # PostgreSQL admin (schema init only)
     postgres_host: str = "db"

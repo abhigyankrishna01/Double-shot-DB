@@ -4,13 +4,16 @@
 # After provisioning:
 #   1. In the `agent-db` service shell, run:  psql $DATABASE_URL -f sql/sample_db.sql
 #      (or upload sample_db.sql and run it once via Render's psql shell)
-#   2. Set AZURE_OPENAI_* secrets on the `agent-backend` service env.
+#   2. Set GEMINI_API_KEY on the `agent-backend` service env.
 
 databases:
   - name: agent-db
     plan: free
     databaseName: analyst_db
+<<<<<<< HEAD
     
+=======
+>>>>>>> bd020f5 (env and backend updates)
 
 services:
   # ── Backend (FastAPI + LangGraph) ──────────────────────────────────────────
@@ -22,15 +25,13 @@ services:
     dockerContext: .
     healthCheckPath: /health
     envVars:
-      # Azure OpenAI — set these manually in the Render dashboard
-      - key: AZURE_OPENAI_ENDPOINT
+      # Gemini — set the API key manually in the Render dashboard
+      - key: GEMINI_API_KEY
         sync: false
-      - key: AZURE_OPENAI_API_KEY
-        sync: false
-      - key: AZURE_OPENAI_DEPLOYMENT
-        value: gpt-4o-mini
-      - key: AZURE_OPENAI_API_VERSION
-        value: "2024-02-01"
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: GEMINI_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai/
 
       # PostgreSQL admin DSN (pulled from managed DB)
       - key: POSTGRES_HOST

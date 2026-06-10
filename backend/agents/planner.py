@@ -6,7 +6,7 @@ Prompts are loaded from backend/prompts/planner.txt for independent versioning.
 
 import json
 import logging
-from openai import AsyncAzureOpenAI
+from openai import AsyncOpenAI
 from backend.config import get_settings
 from backend.agents.state import AgentState
 from backend.prompts import load_prompt
@@ -17,12 +17,11 @@ logger = logging.getLogger(__name__)
 _SYSTEM_PROMPT = load_prompt("planner")
 
 
-def _build_client() -> AsyncAzureOpenAI:
+def _build_client() -> AsyncOpenAI:
     s = get_settings()
-    return AsyncAzureOpenAI(
-        azure_endpoint=s.azure_openai_endpoint,
-        api_key=s.azure_openai_api_key,
-        api_version=s.azure_openai_api_version,
+    return AsyncOpenAI(
+        api_key=s.gemini_api_key,
+        base_url=s.gemini_base_url,
     )
 
 
@@ -55,7 +54,7 @@ async def planner_agent(state: AgentState) -> AgentState:
     logger.info("planner_start", extra={"question": safe_log(state["question"])})
 
     response = await client.chat.completions.create(
-        model=settings.azure_openai_deployment,
+        model=settings.gemini_model,
         messages=[
             {"role": "system", "content": _SYSTEM_PROMPT},
             {

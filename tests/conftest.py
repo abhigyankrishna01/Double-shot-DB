@@ -7,10 +7,9 @@ so they appear at the top of this file before any local imports.
 import os
 
 # Fake credentials — never real keys
-os.environ.setdefault("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com/")
-os.environ.setdefault("AZURE_OPENAI_API_KEY", "test-api-key-00000000000000000000000000")
-os.environ.setdefault("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
-os.environ.setdefault("AZURE_OPENAI_API_VERSION", "2024-02-01")
+os.environ.setdefault("GEMINI_API_KEY", "test-gemini-key-00000000000000000000")
+os.environ.setdefault("GEMINI_MODEL", "gemini-2.5-flash")
+os.environ.setdefault("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
 os.environ.setdefault("POSTGRES_READONLY_USER", "readonly_user")
 os.environ.setdefault("POSTGRES_READONLY_PASSWORD", "readonly_pass")
 os.environ.setdefault("MAX_RETRIES", "3")

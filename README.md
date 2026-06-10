@@ -54,7 +54,7 @@ Response → Streamlit UI (step tabs, smart charts, confidence)
 |----------------|------------------------------------|
 | Backend API    | FastAPI 0.111 + uvicorn            |
 | Agent Engine   | LangGraph 0.1.4                    |
-| LLM            | Azure OpenAI GPT-4o-mini           |
+| LLM            | Google Gemini 2.5 Flash (via OpenAI-compatible endpoint)           |
 | Database       | PostgreSQL 16 (asyncpg)            |
 | ORM            | SQLAlchemy 2.0 async               |
 | SQL Validation | regex + sqlparse AST               |
@@ -104,7 +104,7 @@ docker-compose.yml         — full stack
 ### Prerequisites
 
 - Docker Desktop (Docker Engine 24+ and Compose v2)
-- An Azure OpenAI deployment (GPT-4o-mini recommended)
+- A Google Gemini API key (free tier at https://aistudio.google.com/apikey)
 
 ### 1. Clone and configure
 
@@ -114,14 +114,15 @@ cd "Autonomous SQL Data Analyst Agent"
 cp .env.example .env
 ```
 
-Edit `.env` and set your Azure OpenAI credentials:
+Edit `.env` and set your Gemini API key:
 
 ```env
-AZURE_OPENAI_ENDPOINT=https://<your-resource>.openai.azure.com/
-AZURE_OPENAI_API_KEY=<your-key>
-AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
-AZURE_OPENAI_API_VERSION=2024-02-01
+GEMINI_API_KEY=<your-key>
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 ```
+
+Get a free key at https://aistudio.google.com/apikey.
 
 Leave the PostgreSQL values at their defaults unless you're pointing at an external DB.
 
@@ -279,9 +280,8 @@ This repo ships with [render.yaml](render.yaml) — a Render Blueprint that prov
 
 1. **Push to GitHub** (see commands above).
 2. In Render → **New + → Blueprint** → select this repo. It will read `render.yaml` and provision all three services.
-3. On `agent-backend`, set these secrets in **Environment**:
-   - `AZURE_OPENAI_ENDPOINT`
-   - `AZURE_OPENAI_API_KEY`
+3. On `agent-backend`, set this secret in **Environment**:
+   - `GEMINI_API_KEY`
 4. **Seed the database** — open the `agent-db` PSQL shell in Render and run:
    ```sql
    \i sql/sample_db.sql
