@@ -305,5 +305,5 @@ The database is **external (Neon)** — Render's free tier does not allow custom
 ---
 
 ## License
-
+feel free to put your thoughts and ping me
 MIT
