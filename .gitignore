@@ -34,3 +34,7 @@ Thumbs.db
 
 # Docker volumes (local dev)
 postgres_data/
+
+# Local AI-assistant / scratch files
+.claude/
+memory.md

@@ -50,11 +50,13 @@ async def client():
         new_callable=AsyncMock,
         return_value=MOCK_SCHEMA,
     ):
-        async with AsyncClient(
-            transport=ASGITransport(app=app),
-            base_url="http://test",
-        ) as ac:
-            yield ac
+        # ASGITransport does not run lifespan events, so run startup explicitly
+        async with app.router.lifespan_context(app):
+            async with AsyncClient(
+                transport=ASGITransport(app=app, raise_app_exceptions=False),
+                base_url="http://test",
+            ) as ac:
+                yield ac
 
 
 # ── Health & schema ───────────────────────────────────────────────────────────

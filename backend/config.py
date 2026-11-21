@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     max_retries: int = 3
     max_steps: int = 4           # cap on plan_steps per query
     max_query_rows: int = 500    # auto-injected LIMIT if absent
+    query_timeout_ms: int = 5000 # per-query statement_timeout (kills pg_sleep / runaway scans)
     max_question_length: int = 500
     rate_limit: str = "15/minute"
 

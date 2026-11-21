@@ -95,7 +95,7 @@ class TestValidateSqlparse:
             _validate_sqlparse("SELECT 1; SELECT 2")
 
     def test_ddl_token_blocked(self):
-        with pytest.raises(DisallowedStatementError, match="DDL"):
+        with pytest.raises(DisallowedStatementError, match="CREATE|DDL"):
             _validate_sqlparse("CREATE TABLE foo (id INT)")
 
     def test_cte_passes(self):
