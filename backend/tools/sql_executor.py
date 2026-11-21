@@ -4,8 +4,11 @@ Executes SQL using the READ-ONLY database connection exclusively.
 Validation layers (defense-in-depth):
   1. Regex fast-filter — strips comments, blocks known mutation keywords
   2. sqlparse AST check — blocks DDL/non-SELECT DML at token level
-  3. Auto-LIMIT injection — prevents runaway full-table scans
-  4. PostgreSQL read-only role — true enforcement boundary at the DB
+  3. Function / clause denylist — blocks sleep, file access, config tampering,
+     SELECT INTO and row locks, which are all valid inside a plain SELECT
+  4. Auto-LIMIT injection — prevents runaway result sets
+  5. Per-query guards — READ ONLY transaction + statement_timeout
+  6. PostgreSQL read-only role — true enforcement boundary at the DB
 
 Caching: successful results stored in async TTL cache (query_cache.py).
 """
@@ -20,6 +23,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+from backend.config import get_settings
 from backend.db.connection import get_readonly_engine
 from backend.tools.query_cache import query_cache
 
@@ -27,6 +31,26 @@ logger = logging.getLogger(__name__)
 
 _DISALLOWED_PATTERN = re.compile(
     r"\b(INSERT|UPDATE|DELETE|DROP|TRUNCATE|ALTER|CREATE|REPLACE|UPSERT|GRANT|REVOKE|EXECUTE|CALL)\b",
+    re.IGNORECASE,
+)
+
+
+# Functions that are legal inside a SELECT but dangerous: DoS (sleep, locks),
+# server file access, config tampering (e.g. disabling statement_timeout),
+# backend control, or executing arbitrary SQL from a string.
+_DANGEROUS_FUNCTIONS = (
+    r"pg_sleep(_for|_until)?", r"pg_read_(binary_)?file", r"pg_ls_\w+", r"pg_stat_file",
+    r"lo_\w+", r"dblink\w*", r"set_config", r"pg_terminate_backend", r"pg_cancel_backend",
+    r"pg_reload_conf", r"pg_rotate_logfile", r"pg_(try_)?advisory_\w+",
+    r"query_to_xml\w*", r"pg_logical_\w+", r"pg_switch_wal", r"pg_create_\w+",
+)
+_DANGEROUS_FUNCTION_PATTERN = re.compile(
+    r"\b(" + "|".join(_DANGEROUS_FUNCTIONS) + r")\s*\(",
+    re.IGNORECASE,
+)
+# SELECT ... INTO creates a table; FOR SHARE / KEY SHARE take row locks.
+_DANGEROUS_CLAUSE_PATTERN = re.compile(
+    r"\bINTO\b|\bFOR\s+(NO\s+KEY\s+UPDATE|UPDATE|KEY\s+SHARE|SHARE)\b",
     re.IGNORECASE,
 )
 
@@ -55,8 +79,14 @@ def _validate_no_stacking(sql: str) -> None:
         )
 
 
+def _strip_string_literals(sql: str) -> str:
+    """Blank out '...' literals so data values (e.g. status = 'update') are not
+    mistaken for keywords or function calls. Literals cannot execute."""
+    return re.sub(r"'(?:[^']|'')*'", "''", sql)
+
+
 def _validate_regex(sql: str) -> None:
-    cleaned = _strip_comments(sql)
+    cleaned = _strip_string_literals(_strip_comments(sql))
     if _DISALLOWED_PATTERN.search(cleaned):
         raise DisallowedStatementError(
             "Statement contains disallowed mutation keywords. Only SELECT is permitted."
@@ -92,9 +122,20 @@ def _validate_sqlparse(sql: str) -> None:
             raise DisallowedStatementError(f"DML token '{token.value}' rejected.")
 
 
+def _validate_functions(sql: str) -> None:
+    cleaned = _strip_string_literals(_strip_comments(sql))
+    match = _DANGEROUS_FUNCTION_PATTERN.search(cleaned)
+    if match:
+        raise DisallowedStatementError(f"Function '{match.group(1)}' is not permitted.")
+    match = _DANGEROUS_CLAUSE_PATTERN.search(cleaned)
+    if match:
+        raise DisallowedStatementError(f"Clause '{match.group(0).upper()}' is not permitted.")
+
+
 def _validate_statement(sql: str) -> None:
     _validate_no_stacking(sql)   # cheapest check first
     _validate_regex(sql)
+    _validate_functions(sql)
     _validate_sqlparse(sql)
 
 
@@ -145,6 +186,11 @@ async def execute_readonly_query(sql: str, max_rows: int = 500) -> list[dict[str
     async with async_session() as session:
         try:
             logger.info("executing_query", extra={"sql_preview": sql[:120]})
+            # Per-transaction guards. SET LOCAL works through poolers like
+            # PgBouncer/Neon, unlike connection-level server_settings.
+            timeout_ms = int(get_settings().query_timeout_ms)
+            await session.execute(text("SET TRANSACTION READ ONLY"))
+            await session.execute(text(f"SET LOCAL statement_timeout = {timeout_ms}"))
             result = await session.execute(text(sql))
             columns = list(result.keys())
             rows = result.fetchmany(max_rows)

@@ -1,6 +1,8 @@
 # Autonomous SQL Data Analyst Agent
 
-A production-grade, autonomous agent that converts natural-language questions into safe, multi-step SQL analyses and returns synthesized insights — built on **LangGraph**, **FastAPI**, **Azure OpenAI**, and **PostgreSQL**.
+[![CI](https://github.com/abhigyankrishna01/Double-shot-DB/actions/workflows/ci.yml/badge.svg)](https://github.com/abhigyankrishna01/Double-shot-DB/actions/workflows/ci.yml)
+
+A production-grade, autonomous agent that converts natural-language questions into safe, multi-step SQL analyses and returns synthesized insights — built on **LangGraph**, **FastAPI**, **Google Gemini**, and **PostgreSQL**.
 
 The agent plans, generates, executes, self-corrects, and explains — all behind a strict read-only security boundary.
 
@@ -9,7 +11,7 @@ The agent plans, generates, executes, self-corrects, and explains — all behind
 ## Features
 
 - **Multi-step analytical reasoning** — a planner decomposes each question into ordered sub-tasks; a SQL generator, executor, and evaluator run each step with a per-step retry budget.
-- **Triple-layer SQL safety** — regex validation + `sqlparse` AST scan + PostgreSQL read-only role.
+- **Defense-in-depth SQL safety** — keyword filter + function/clause denylist + `sqlparse` AST scan + read-only transaction with `statement_timeout` + PostgreSQL read-only role.
 - **Schema-aware prompting** — table columns *and* foreign-key relationships are injected into every prompt to eliminate hallucinated joins.
 - **Multi-turn conversations** — session-scoped history with TTL; follow-up questions retain context.
 - **Observability** — structured JSON logs at every node (planner, generator, evaluator, executor, cache, graph).
@@ -221,9 +223,16 @@ All runtime knobs live in `.env`:
 
 - `readonly_user` PostgreSQL role: `GRANT SELECT` only — **the true enforcement boundary**.
 - `sql_executor.py` connects via the read-only DSN exclusively.
-- **Layer 1** — regex strips comments, blocks mutation keywords, rejects statement stacking.
-- **Layer 2** — `sqlparse` AST scan catches DDL/non-SELECT DML that regex may miss.
-- **Layer 3** — PostgreSQL role permissions.
+- **Layer 1** — regex strips comments and string literals, blocks mutation keywords, rejects statement stacking.
+- **Layer 2** — function/clause denylist: blocks calls that are *valid inside a SELECT* but dangerous —
+  `pg_sleep` (DoS), `pg_read_file` / `pg_ls_dir` (server file access), `set_config` (could disable the timeout),
+  advisory locks, `dblink`, `query_to_xml` (runs SQL from a string), `SELECT … INTO`, and `FOR SHARE` row locks.
+- **Layer 3** — `sqlparse` AST scan catches DDL/non-SELECT DML that regex may miss.
+- **Layer 4** — every query runs in a `READ ONLY` transaction with `SET LOCAL statement_timeout`
+  (`QUERY_TIMEOUT_MS`, default 5000). `SET LOCAL` is used instead of connection-level settings so it works
+  through PgBouncer / Neon's pooler.
+- **Layer 5** — PostgreSQL role permissions.
+- Every bypass above has a regression test in `tests/unit/test_sql_safety_hardening.py`.
 - Raw DB errors never reach the client (`_sanitize_error` at API boundary).
 - Generic 500 handler for uncaught exceptions — no stack traces leaked.
 - User input truncated in logs (`safe_log()` caps at 120 chars); prompt content is never logged.
@@ -237,8 +246,8 @@ All runtime knobs live in `.env`:
 ### Run tests
 
 ```bash
-pip install -r tests/requirements.txt
-pytest
+pip install -r backend/requirements.txt -r tests/requirements.txt
+pytest   # 96 tests, LLM and DB are mocked
 ```
 
 65 tests across unit and integration layers — no real LLM or DB required (everything is mocked).
